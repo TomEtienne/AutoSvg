@@ -1,2 +1,376 @@
-!function(){"use strict";var e="undefined"==typeof window?global:window;if("function"!=typeof e.require){var n={},t={},o={},r={}.hasOwnProperty,i="components/",l=function(e,n){var t=0;n&&(0===n.indexOf(i)&&(t=i.length),n.indexOf("/",t)>0&&(n=n.substring(t,n.indexOf("/",t))));var r=o[e+"/index.js"]||o[n+"/deps/"+e+"/index.js"];return r?i+r.substring(0,r.length-".js".length):e},u=/^\.\.?(\/|$)/,c=function(e,n){for(var t,o=[],r=(u.test(n)?e+"/"+n:n).split("/"),i=0,l=r.length;l>i;i++)t=r[i],".."===t?o.pop():"."!==t&&""!==t&&o.push(t);return o.join("/")},s=function(e){return e.split("/").slice(0,-1).join("/")},f=function(n){return function(t){var o=c(s(n),t);return e.require(o,n)}},a=function(e,n){var o={id:e,exports:{}};return t[e]=o,n(o.exports,f(e),o),o.exports},p=function(e,o){var i=c(e,".");if(null==o&&(o="/"),i=l(e,o),r.call(t,i))return t[i].exports;if(r.call(n,i))return a(i,n[i]);var u=c(i,"./index");if(r.call(t,u))return t[u].exports;if(r.call(n,u))return a(u,n[u]);throw new Error('Cannot find module "'+e+'" from "'+o+'"')};p.alias=function(e,n){o[n]=e},p.register=p.define=function(e,t){if("object"==typeof e)for(var o in e)r.call(e,o)&&(n[o]=e[o]);else n[e]=t},p.list=function(){var e=[];for(var t in n)r.call(n,t)&&e.push(t);return e},p.brunch=!0,p._cache=t,e.require=p}}(),function(){var e=(window,{assert:{},buffer:{},child_process:{},cluster:{},crypto:{},dgram:{},dns:{},domain:{},events:{},fs:{},http:{},https:{},net:{},os:{},path:{},punycode:{},querystring:{},readline:{},repl:{},string_decoder:{},tls:{},tty:{},url:{},util:{},vm:{},zlib:{},process:{env:{}}}),n=(e.process,function(n,t){return function(o){return void 0!==t[o]&&(o=t[o]),o=o.replace(".js",""),-1===["assert","buffer","child_process","cluster","crypto","dgram","dns","domain","events","fs","http","https","net","os","path","punycode","querystring","readline","repl","string_decoder","tls","tty","url","util","vm","zlib","process"].indexOf(o)?n(o):e[o]}});require.register("loglevel",function(e,t,o){var r=n(function(e){return t(e.replace("./","loglevel//lib/"))},{});!function(e,n,t){!function(e,o){"use strict";"object"==typeof t&&t.exports&&"function"==typeof n?t.exports=o():"function"==typeof define&&"object"==typeof define.amd?define(o):e.log=o()}(this,function(){"use strict";function e(e){return typeof console===u?!1:void 0!==console[e]?n(console,e):void 0!==console.log?n(console,"log"):l}function n(e,n){var t=e[n];if("function"==typeof t.bind)return t.bind(e);try{return Function.prototype.bind.call(t,e)}catch(o){return function(){return Function.prototype.apply.apply(t,[e,arguments])}}}function t(e,n,t){return function(){typeof console!==u&&(o.call(this,n,t),this[e].apply(this,arguments))}}function o(e,n){for(var t=0;t<c.length;t++){var o=c[t];this[o]=e>t?l:this.methodFactory(o,e,n)}}function r(n,o,r){return e(n)||t.apply(this,arguments)}function i(e,n,t){function i(e){var n=(c[e]||"silent").toUpperCase();try{return void(window.localStorage[a]=n)}catch(t){}try{window.document.cookie=encodeURIComponent(a)+"="+n+";"}catch(t){}}function l(){var e;try{e=window.localStorage[a]}catch(n){}if(typeof e===u)try{var t=window.document.cookie,o=t.indexOf(encodeURIComponent(a)+"=");o&&(e=/^([^;]+)/.exec(t.slice(o))[1])}catch(n){}return void 0===f.levels[e]&&(e=void 0),e}var s,f=this,a="loglevel";e&&(a+=":"+e),f.levels={TRACE:0,DEBUG:1,INFO:2,WARN:3,ERROR:4,SILENT:5},f.methodFactory=t||r,f.getLevel=function(){return s},f.setLevel=function(n,t){if("string"==typeof n&&void 0!==f.levels[n.toUpperCase()]&&(n=f.levels[n.toUpperCase()]),!("number"==typeof n&&n>=0&&n<=f.levels.SILENT))throw"log.setLevel() called with invalid level: "+n;return s=n,t!==!1&&i(n),o.call(f,n,e),typeof console===u&&n<f.levels.SILENT?"No console available for logging":void 0},f.setDefaultLevel=function(e){l()||f.setLevel(e,!1)},f.enableAll=function(e){f.setLevel(f.levels.TRACE,e)},f.disableAll=function(e){f.setLevel(f.levels.SILENT,e)};var p=l();null==p&&(p=null==n?"WARN":n),f.setLevel(p,!1)}var l=function(){},u="undefined",c=["trace","debug","info","warn","error"],s=new i,f={};s.getLogger=function(e){if("string"!=typeof e||""===e)throw new TypeError("You must supply a name when creating a logger.");var n=f[e];return n||(n=f[e]=new i(e,s.getLevel(),s.methodFactory)),n};var a=typeof window!==u?window.log:void 0;return s.noConflict=function(){return typeof window!==u&&window.log===s&&(window.log=a),s},s})}(e,r,o)})}(),window.log=require("loglevel"),require.register("app/index",function(e,n,t){"use strict";function o(){this.main=function(){log.info("Main")}}t.exports=new o}),require.register("lib/index",function(e,n,t){"use strict";"undefined"!=typeof global&&(global.log=n("loglevel")),t.exports=function(){}});
+(function() {
+  'use strict';
+
+  var globals = typeof window === 'undefined' ? global : window;
+  if (typeof globals.require === 'function') return;
+
+  var modules = {};
+  var cache = {};
+  var aliases = {};
+  var has = ({}).hasOwnProperty;
+
+  var endsWith = function(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+  };
+
+  var _cmp = 'components/';
+  var unalias = function(alias, loaderPath) {
+    var start = 0;
+    if (loaderPath) {
+      if (loaderPath.indexOf(_cmp) === 0) {
+        start = _cmp.length;
+      }
+      if (loaderPath.indexOf('/', start) > 0) {
+        loaderPath = loaderPath.substring(start, loaderPath.indexOf('/', start));
+      }
+    }
+    var result = aliases[alias + '/index.js'] || aliases[loaderPath + '/deps/' + alias + '/index.js'];
+    if (result) {
+      return _cmp + result.substring(0, result.length - '.js'.length);
+    }
+    return alias;
+  };
+
+  var _reg = /^\.\.?(\/|$)/;
+  var expand = function(root, name) {
+    var results = [], part;
+    var parts = (_reg.test(name) ? root + '/' + name : name).split('/');
+    for (var i = 0, length = parts.length; i < length; i++) {
+      part = parts[i];
+      if (part === '..') {
+        results.pop();
+      } else if (part !== '.' && part !== '') {
+        results.push(part);
+      }
+    }
+    return results.join('/');
+  };
+
+  var dirname = function(path) {
+    return path.split('/').slice(0, -1).join('/');
+  };
+
+  var localRequire = function(path) {
+    return function expanded(name) {
+      var absolute = expand(dirname(path), name);
+      return globals.require(absolute, path);
+    };
+  };
+
+  var initModule = function(name, definition) {
+    var module = {id: name, exports: {}};
+    cache[name] = module;
+    definition(module.exports, localRequire(name), module);
+    return module.exports;
+  };
+
+  var require = function(name, loaderPath) {
+    var path = expand(name, '.');
+    if (loaderPath == null) loaderPath = '/';
+    path = unalias(name, loaderPath);
+
+    if (has.call(cache, path)) return cache[path].exports;
+    if (has.call(modules, path)) return initModule(path, modules[path]);
+
+    var dirIndex = expand(path, './index');
+    if (has.call(cache, dirIndex)) return cache[dirIndex].exports;
+    if (has.call(modules, dirIndex)) return initModule(dirIndex, modules[dirIndex]);
+
+    throw new Error('Cannot find module "' + name + '" from '+ '"' + loaderPath + '"');
+  };
+
+  require.alias = function(from, to) {
+    aliases[to] = from;
+  };
+
+  require.register = require.define = function(bundle, fn) {
+    if (typeof bundle === 'object') {
+      for (var key in bundle) {
+        if (has.call(bundle, key)) {
+          modules[key] = bundle[key];
+        }
+      }
+    } else {
+      modules[bundle] = fn;
+    }
+  };
+
+  require.list = function() {
+    var result = [];
+    for (var item in modules) {
+      if (has.call(modules, item)) {
+        result.push(item);
+      }
+    }
+    return result;
+  };
+
+  require.brunch = true;
+  require._cache = cache;
+  globals.require = require;
+})();
+(function() {
+    var global = window;
+    var __shims = {assert: ({}),buffer: ({}),child_process: ({}),cluster: ({}),crypto: ({}),dgram: ({}),dns: ({}),domain: ({}),events: ({}),fs: ({}),http: ({}),https: ({}),net: ({}),os: ({}),path: ({}),punycode: ({}),querystring: ({}),readline: ({}),repl: ({}),string_decoder: ({}),tls: ({}),tty: ({}),url: ({}),util: ({}),vm: ({}),zlib: ({}),process: ({"env":{}})};
+    var process = __shims.process;
+
+    var __makeRequire = function(r, __brmap) {
+      return function(name) {
+        if (__brmap[name] !== undefined) name = __brmap[name];
+        name = name.replace(".js", "");
+        return ["assert","buffer","child_process","cluster","crypto","dgram","dns","domain","events","fs","http","https","net","os","path","punycode","querystring","readline","repl","string_decoder","tls","tty","url","util","vm","zlib","process"].indexOf(name) === -1 ? r(name) : __shims[name];
+      }
+    };
+  require.register('loglevel', function(exports,req,module){
+    var require = __makeRequire((function(n) { return req(n.replace('./', 'loglevel//lib/')); }), {});
+    (function(exports,require,module) {
+      /*
+* loglevel - https://github.com/pimterry/loglevel
+*
+* Copyright (c) 2013 Tim Perry
+* Licensed under the MIT license.
+*/
+(function (root, definition) {
+    "use strict";
+    if (typeof module === 'object' && module.exports && typeof require === 'function') {
+        module.exports = definition();
+    } else if (typeof define === 'function' && typeof define.amd === 'object') {
+        define(definition);
+    } else {
+        root.log = definition();
+    }
+}(this, function () {
+    "use strict";
+    var noop = function() {};
+    var undefinedType = "undefined";
+
+    function realMethod(methodName) {
+        if (typeof console === undefinedType) {
+            return false; // We can't build a real method without a console to log to
+        } else if (console[methodName] !== undefined) {
+            return bindMethod(console, methodName);
+        } else if (console.log !== undefined) {
+            return bindMethod(console, 'log');
+        } else {
+            return noop;
+        }
+    }
+
+    function bindMethod(obj, methodName) {
+        var method = obj[methodName];
+        if (typeof method.bind === 'function') {
+            return method.bind(obj);
+        } else {
+            try {
+                return Function.prototype.bind.call(method, obj);
+            } catch (e) {
+                // Missing bind shim or IE8 + Modernizr, fallback to wrapping
+                return function() {
+                    return Function.prototype.apply.apply(method, [obj, arguments]);
+                };
+            }
+        }
+    }
+
+    // these private functions always need `this` to be set properly
+
+    function enableLoggingWhenConsoleArrives(methodName, level, loggerName) {
+        return function () {
+            if (typeof console !== undefinedType) {
+                replaceLoggingMethods.call(this, level, loggerName);
+                this[methodName].apply(this, arguments);
+            }
+        };
+    }
+
+    function replaceLoggingMethods(level, loggerName) {
+        /*jshint validthis:true */
+        for (var i = 0; i < logMethods.length; i++) {
+            var methodName = logMethods[i];
+            this[methodName] = (i < level) ?
+                noop :
+                this.methodFactory(methodName, level, loggerName);
+        }
+    }
+
+    function defaultMethodFactory(methodName, level, loggerName) {
+        /*jshint validthis:true */
+        return realMethod(methodName) ||
+               enableLoggingWhenConsoleArrives.apply(this, arguments);
+    }
+
+    var logMethods = [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error"
+    ];
+
+    function Logger(name, defaultLevel, factory) {
+      var self = this;
+      var currentLevel;
+      var storageKey = "loglevel";
+      if (name) {
+        storageKey += ":" + name;
+      }
+
+      function persistLevelIfPossible(levelNum) {
+          var levelName = (logMethods[levelNum] || 'silent').toUpperCase();
+
+          // Use localStorage if available
+          try {
+              window.localStorage[storageKey] = levelName;
+              return;
+          } catch (ignore) {}
+
+          // Use session cookie as fallback
+          try {
+              window.document.cookie =
+                encodeURIComponent(storageKey) + "=" + levelName + ";";
+          } catch (ignore) {}
+      }
+
+      function getPersistedLevel() {
+          var storedLevel;
+
+          try {
+              storedLevel = window.localStorage[storageKey];
+          } catch (ignore) {}
+
+          if (typeof storedLevel === undefinedType) {
+              try {
+                  var cookie = window.document.cookie;
+                  var location = cookie.indexOf(
+                      encodeURIComponent(storageKey) + "=");
+                  if (location) {
+                      storedLevel = /^([^;]+)/.exec(cookie.slice(location))[1];
+                  }
+              } catch (ignore) {}
+          }
+
+          // If the stored level is not valid, treat it as if nothing was stored.
+          if (self.levels[storedLevel] === undefined) {
+              storedLevel = undefined;
+          }
+
+          return storedLevel;
+      }
+
+      /*
+       *
+       * Public API
+       *
+       */
+
+      self.levels = { "TRACE": 0, "DEBUG": 1, "INFO": 2, "WARN": 3,
+          "ERROR": 4, "SILENT": 5};
+
+      self.methodFactory = factory || defaultMethodFactory;
+
+      self.getLevel = function () {
+          return currentLevel;
+      };
+
+      self.setLevel = function (level, persist) {
+          if (typeof level === "string" && self.levels[level.toUpperCase()] !== undefined) {
+              level = self.levels[level.toUpperCase()];
+          }
+          if (typeof level === "number" && level >= 0 && level <= self.levels.SILENT) {
+              currentLevel = level;
+              if (persist !== false) {  // defaults to true
+                  persistLevelIfPossible(level);
+              }
+              replaceLoggingMethods.call(self, level, name);
+              if (typeof console === undefinedType && level < self.levels.SILENT) {
+                  return "No console available for logging";
+              }
+          } else {
+              throw "log.setLevel() called with invalid level: " + level;
+          }
+      };
+
+      self.setDefaultLevel = function (level) {
+          if (!getPersistedLevel()) {
+              self.setLevel(level, false);
+          }
+      };
+
+      self.enableAll = function(persist) {
+          self.setLevel(self.levels.TRACE, persist);
+      };
+
+      self.disableAll = function(persist) {
+          self.setLevel(self.levels.SILENT, persist);
+      };
+
+      // Initialize with the right level
+      var initialLevel = getPersistedLevel();
+      if (initialLevel == null) {
+          initialLevel = defaultLevel == null ? "WARN" : defaultLevel;
+      }
+      self.setLevel(initialLevel, false);
+    }
+
+    /*
+     *
+     * Package-level API
+     *
+     */
+
+    var defaultLogger = new Logger();
+
+    var _loggersByName = {};
+    defaultLogger.getLogger = function getLogger(name) {
+        if (typeof name !== "string" || name === "") {
+          throw new TypeError("You must supply a name when creating a logger.");
+        }
+
+        var logger = _loggersByName[name];
+        if (!logger) {
+          logger = _loggersByName[name] = new Logger(
+            name, defaultLogger.getLevel(), defaultLogger.methodFactory);
+        }
+        return logger;
+    };
+
+    // Grab the current global log variable in case of overwrite
+    var _log = (typeof window !== undefinedType) ? window.log : undefined;
+    defaultLogger.noConflict = function() {
+        if (typeof window !== undefinedType &&
+               window.log === defaultLogger) {
+            window.log = _log;
+        }
+
+        return defaultLogger;
+    };
+
+    return defaultLogger;
+}));
+
+    })(exports,require,module);
+  });
+})();window.log = require('loglevel');require.register("app/index", function(exports, require, module) {
+"use strict";
+
+module.exports = new App();
+
+function App() {
+  this.main = function () {
+    log.info("Main");
+  };
+}
+});
+
+;require.register("lib/index", function(exports, require, module) {
+"use strict";
+
+if (typeof global !== "undefined") {
+  global.log = require("loglevel");
+}
+
+module.exports = function () {};
+});
+
+
 //# sourceMappingURL=app.js.map
