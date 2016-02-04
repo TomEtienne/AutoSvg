@@ -363,7 +363,7 @@ function create_controller() {
     var canvas_container = document.getElementById("autoimg");
     var canvas = document.createElementNS(namespace, "svg");
     var circle = document.createElementNS(namespace, "circle");
-    /* The three following line define a circle of center 0,0 and radius 10*/
+    /* The three followings lines defines a circle of center 0,0 and radius 10*/
     circle.setAttribute("cx", 0);
     circle.setAttribute("cy", 0);
     circle.setAttribute("r", 10);
@@ -383,18 +383,53 @@ function App() {
   this.main = function () {
     log.info("Main");
     create_controller();
+    log.info(require("../lib").automata());
   };
 }
 });
 
-;require.register("lib/index", function(exports, require, module) {
+;require.register("lib/automata", function(exports, require, module) {
+"use strict";
+
+function Sym(name) {
+  this.name = name;
+}
+
+function State(num) {
+  this.num = num;
+}
+
+function Transition(from, symbol, to) {
+  this.from = from;
+  this.symbol = symbol;
+  this.to = to;
+}
+
+var alphabet = [new Sym("a"), new Sym("b")];
+var states = [new State(0), new State(1)];
+var automata = {
+  alphabet: alphabet,
+  states: states,
+  init: [states[0]],
+  term: [states[1]],
+  transitions: [new Transition(states[0], alphabet[0], states[1]), new Transition(states[1], alphabet[1], states[1])]
+};
+
+log.info(automata);
+
+exports.automata = function () {
+  return automata;
+};
+});
+
+require.register("lib/index", function(exports, require, module) {
 "use strict";
 
 if (typeof global !== "undefined") {
   global.log = require("loglevel");
 }
 
-module.exports = function () {};
+exports.automata = require("./automata").automata;
 });
 
 
