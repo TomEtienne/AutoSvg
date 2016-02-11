@@ -46,6 +46,18 @@ trouve la documentation complète des API Javascript. C&#8217;est la référence
 (appelée ES6 ou ES2015), <a href="http://putaindecode.io/fr/articles/">Putain de code</a>
 propose une série d&#8217;articles en français.</p>
 </div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Nécessaire pour une application Web côté client.
+ES6 est le standard actuel ; les projets majeurs de l'écosystème Javascript
+l&#8217;ont unanimement adopté. Le langage apporte quelques constructions qui
+facilitent la lecture et l'écriture du code (lambdas, valeurs par défaut
+des arguments, enrichissement de la bibliothèque standard, let/const, etc.).</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -59,6 +71,15 @@ propose une série d&#8217;articles en français.</p>
 que la précédente, ES5. Toutefois, tous les navigateurs ne se sont pas encore
 mis à la page. Babel permet de convertir le code ES6 en code ES5 pour qu&#8217;il
 reste compatible.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Tous les navigateurs n&#8217;ont pas intégralement implémenté le
+standard ES6. Babel nous affranchit des problèmes de compatibilité.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -79,6 +100,15 @@ Quelques ressources :</p>
 </li>
 <li>
 <p>Le <a href="https://openclassrooms.com/courses/gerez-vos-codes-source-avec-git">cours</a> d&#8217;OpenClassroms</p>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Partage, collaboration et gestion grandement facilitées.
+Un outil qui fait l&#8217;unanimité.</p>
+</dd>
+</dl>
+</div>
 </li>
 </ul>
 </div>
@@ -93,6 +123,14 @@ Quelques ressources :</p>
 <div class="paragraph">
 <p>A priori nous n&#8217;utiliserons pas node directement mais il faut <a href="https://nodejs.org/en/download/package-manager/">l&#8217;installer</a>.
 La version 4 est requise.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Nécessaire pour d&#8217;autres outils.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -119,6 +157,16 @@ développer (contient notamment Brunch et ESLint).</p>
 <p>Faites <code>npm install</code> dans la racine du projet pour installer les dépendances.
 Les fichiers téléchargés sont placés dans le dossier <code>node_modules</code>.
 La fonction <code>require</code> en Javascript permet de charger un module.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Gestion des dépendances facilitée. Plusieurs alternatives
+comme <code>bower</code> et <code>spm</code>. Toutefois, <code>npm</code> est le plus utilisé et permet
+de déployer l&#8217;application côté serveur sans effort supplémentaire.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -152,6 +200,18 @@ modifications du code et recharge automatiquement la fenêtre du navigateur.</p>
 <p>Pour mieux comprendre, <a href="https://github.com/brunch/brunch-guide/blob/master/content/fr/README.md">lire le guide en français</a> (attention, il n&#8217;est pas complétement
 à jour).</p>
 </div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Execute Babel et Stylus automatiquement de façon transparente.
+Permet de modulariser le code plutôt que d&#8217;utiliser des variables globales.
+Lance un serveur qui observe les changements dans le code et rafraichit
+automatiquement la page du navigateur, ce qui réduit la durée des <em>feedback
+loops</em>.</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -166,6 +226,14 @@ ou de problèmes de style. Le fichier <code>.eslintrc</code> définit les conven
 Il existe très certainement un plugin ESLint pour votre éditeur préféré.
 A télécharger !</p>
 </div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Style consistant et erreurs bêtes attrapées plus tôt.</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -178,6 +246,16 @@ A télécharger !</p>
 <p>Asciidoc est un langage de markup très simple. GitHub traduit automatiquement
 les fichiers Asciidoc d&#8217;extension <code>.adoc</code> en page HTML.
 Un bref tour de la syntaxe sur <a href="http://asciidoctor.org/docs/asciidoc-syntax-quick-reference/">cette page</a>.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Format texte plutôt que binaire. La syntaxe rend la source
+extrémement lisible (bien plus que LaTeX). Syntaxe standard et consistante,
+contrairement à Markdown.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -221,6 +299,14 @@ le navigateur peut filtrer les messages d&#8217;erreur</p>
 <p>Il n&#8217;est pas nécessaire d&#8217;appeler la fonction <code>require("loglevel")</code>.
 La variable <code>log</code> est définie comme variable globale.</p>
 </div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Un logger, c&#8217;est bien. Faut-il une autre raison ?</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -232,6 +318,14 @@ La variable <code>log</code> est définie comme variable globale.</p>
 <div class="paragraph">
 <p>Un framework CSS très léger, histoire d&#8217;avoir une interface un poil plus jolie
 sans réel effort.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Une meilleure interface sans effort. Potentiellement provisoire.</p>
+</dd>
+</dl>
 </div>
 </div>
 </div>
@@ -248,6 +342,14 @@ sans réel effort.</p>
 <ul>
 <li>
 <p><a href="https://css-tricks.com/scale-svg/">Un SVG qui se redimensionne automatiquement</a></p>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Evidente.</p>
+</dd>
+</dl>
+</div>
 </li>
 </ul>
 </div>
@@ -264,12 +366,22 @@ sans réel effort.</p>
 Les fichiers portent l&#8217;extension <code>.styl</code> et sont à placer dans le dossier
 <code>app/styles</code>.</p>
 </div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Justification</dt>
+<dd>
+<p>Syntaxe plus agréable. Le CSS généré est hautement lisible,
+donc on peut s&#8217;affranchir de cet outil s&#8217;il ne nous intéresse plus.
+Accepte du CSS en entrée, donc toutes les fonctionnalités sont optionnelles.</p>
+</dd>
+</dl>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-11 20:05:23 UTC
+Last updated 2016-02-11 21:10:26 CET
 </div>
 </div>
 </body>
