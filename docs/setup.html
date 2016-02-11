@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.4">
+<title>Setup</title>
+<link rel="stylesheet" href="..//style.css">
+</head>
+<body class="article toc2 toc-left">
+<div id="header">
+<h1>Setup</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_installation">Installation</a>
+<ul class="sectlevel2">
+<li><a href="#_configurer_git">Configurer git</a></li>
+<li><a href="#_configurer_github">Configurer GitHub</a></li>
+<li><a href="#_initialiser_le_projet">Initialiser le projet</a></li>
+</ul>
+</li>
+<li><a href="#_d_veloppement">Développement</a>
+<ul class="sectlevel2">
+<li><a href="#_lancer_le_projet">Lancer le projet</a></li>
+<li><a href="#_travailler_sur_le_projet">Travailler sur le projet</a></li>
+<li><a href="#_mettre_jour_le_site">Mettre à jour le site</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Ce dépot git ("repo" en anglais) est initialisé avec un squelette
+identique de celui du projet d&#8217;algo du semestre précécent de Yacine et Achraf.
+Quelques explications&#8230;&#8203;</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_installation">Installation</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Aller voir sur google pour une explication à chaque étape si nécessaire.</p>
+</div>
+<div class="sect2">
+<h3 id="_configurer_git">Configurer git</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Installer git sur son PC</p>
+</li>
+<li>
+<p>Installer un agent SSH si ce n&#8217;est pas déjà fait (probablement présent
+par défaut)</p>
+</li>
+<li>
+<p>Créer une paire de clés SSH</p>
+</li>
+<li>
+<p>Configurer git via <code>git config --global</code></p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configurer_github">Configurer GitHub</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Créer un compte sur GitHub</p>
+</li>
+<li>
+<p>Ajouter la clé SSH publique</p>
+</li>
+<li>
+<p>Accepter l&#8217;invitation au groupe <em>autosvg</em></p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_initialiser_le_projet">Initialiser le projet</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Cloner le dépot via SSH</p>
+</li>
+<li>
+<p>Configurer <code>package.json</code> en remplaçant <code>chromium</code> dans le champ <code>start</code> par
+la commande lançant votre navigateur</p>
+</li>
+<li>
+<p><a href="https://nodejs.org/en/download/package-manager/Installer" class="bare">https://nodejs.org/en/download/package-manager/Installer</a> node et npm</p>
+</li>
+<li>
+<p><code>npm install</code> dans la racine du projet</p>
+</li>
+<li>
+<p>Créer une branche personnelle. Par exemple pour créer ma branche appelée
+<code>yacine</code>, je fais <code>git branch yacine</code>.</p>
+</li>
+<li>
+<p>Créer la branche personnelle sur le repo en ligne en faisant
+<code>git push origin yacine</code></p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_d_veloppement">Développement</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_lancer_le_projet">Lancer le projet</h3>
+<div class="paragraph">
+<p><code>npm start</code> dans la racine du projet lance un serveur. Une page dans le
+navigateur choisi est automatiquement ouverte. Si des modifications sont
+effectuées dans le code, la page est automatiquement rechargée avec les
+changements</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_travailler_sur_le_projet">Travailler sur le projet</h3>
+<div class="paragraph">
+<p><strong>S&#8217;assurer à tout moment que vous travaillez dans votre branche en faisant
+<code>git branch</code>. La branche dans laquelle vous êtes porte une étoile.</strong></p>
+</div>
+<div class="paragraph">
+<p>Je vous conseille d&#8217;installer une extension pour votre ligne de commande qui
+affiche à tout moment la branche dans laquelle vous vous trouvez.</p>
+</div>
+<div class="paragraph">
+<p>Pour aller d&#8217;une branche à l&#8217;autre, faire <code>git checkout &lt;la_branche&gt;</code>.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Aller dans sa branche. Exemple: <code>git checkout yacine</code>.</p>
+</li>
+<li>
+<p>Faire vos changements. Faites de petits changements.</p>
+</li>
+<li>
+<p><code>git status</code> pour voir les changements effectués.</p>
+</li>
+<li>
+<p><code>git add &lt;fichiers&gt;</code> pour enregistrer les changements effectués sur
+les fichiers nommés</p>
+</li>
+<li>
+<p><code>git commit</code> pour confirmer les changements ; ils sont référencés par un
+<em>hash</em> et il est nécessaire d'écrire un message de commit pour expliquer les
+changements</p>
+</li>
+<li>
+<p><code>git push</code> pour envoyer le commit sur GitHub</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Vous pouvez naturellement travailler sur d&#8217;autres branches. C&#8217;est utile si vous
+travaillez sur une fonctionnalité particulière ou que vous faites une séance
+de travail à plusieurs.</p>
+</div>
+<div class="paragraph">
+<p>Il faudra ensuite <em>merge</em> les commits sur la branche master qui est la branche
+de référence. Faites faire ce travail par une autre personne qui relira le
+code, le testera et gérera les conflits.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_mettre_jour_le_site">Mettre à jour le site</h3>
+<div class="paragraph">
+<p>Avant toute choses, faire <code>npm run init-deploy</code> <strong>une seule fois</strong> pour
+initialiser le dossier <code>pages</code> qui contient le site.</p>
+</div>
+<div class="paragraph">
+<p>Pour mettre à jour le site, lancer <code>npm run deploy</code>. Cela ne fonctionnera
+que si tous les changements ont été commit.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2016-02-11 20:05:23 UTC
+</div>
+</div>
+</body>
+</html>
