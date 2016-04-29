@@ -237,44 +237,29 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var demos = ["basic", "inference", "labels", "placement", "ALDToken", "existingId", "wrongType", "syntax", "MBToken"];
 
+var titles = ["Exemple simple", "Inférence", "Modification du label", "Positionement manuel", "Erreur 1", "Erreur 2", "Erreur 3", "Erreur 4", "Erreur 5"];
+
 function main() {
   var container = document.getElementsByClassName("container")[0];
-  var _iteratorNormalCompletion = true;
-  var _didIteratorError = false;
-  var _iteratorError = undefined;
-
-  try {
-    for (var _iterator = demos[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      var d = _step.value;
-
-      var row = document.createElement("div");
-      row.id = "demo-" + d;
-      row.classList.add("row", "bottom");
-      container.appendChild(row);
-      var autospec = document.createElement("div");
-      autospec.classList.add("autospec", "one-half", "column");
-      var textarea = document.createElement("textarea");
-      var path = "demo/" + d + ".aml";
-      autospec.appendChild(textarea);
-      row.appendChild(autospec);
-      var autoimg = document.createElement("div");
-      autoimg.classList.add("autoimg", "one-half", "column");
-      row.appendChild(autoimg);
-      populate(textarea, autoimg, path);
-    }
-  } catch (err) {
-    _didIteratorError = true;
-    _iteratorError = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion && _iterator.return) {
-        _iterator.return();
-      }
-    } finally {
-      if (_didIteratorError) {
-        throw _iteratorError;
-      }
-    }
+  for (var i = 0; i < demos.length; i++) {
+    var d = demos[i];
+    var row = document.createElement("div");
+    row.id = "demo-" + d;
+    row.classList.add("row", "bottom");
+    container.appendChild(row);
+    var autospec = document.createElement("div");
+    autospec.classList.add("autospec", "one-half", "column");
+    var textarea = document.createElement("textarea");
+    var path = "demo/" + d + ".aml";
+    autospec.appendChild(textarea);
+    var title = document.createElement("h3");
+    title.innerHTML = titles[i];
+    row.appendChild(title);
+    row.appendChild(autospec);
+    var autoimg = document.createElement("div");
+    autoimg.classList.add("autoimg", "one-half", "column");
+    row.appendChild(autoimg);
+    populate(textarea, autoimg, path);
   }
 }
 
