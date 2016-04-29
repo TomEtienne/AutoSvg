@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>AutoSVG SNAPSHOT <!-- TODO --></title>
+<link rel="stylesheet" href="vendor.css"/>
+<link rel="stylesheet" href="style.css"/>
+<script src="vendor.js"></script>
+<script src="app.js"></script>
+</head>
+<body>
+<div class="container">
+  <div id="header" class="row top">
+    <h1 class="title">AutoSVG</h1>
+    <div>
+      <a href="examples.html">Examples</a><br/>
+      <a href="errors.html">Error handling</a><br/>
+      <a href="api-overview.html">API</a>
+    </div>
+    <button id="bGeneration">Dessiner automate</button>
+  </div>
+  <div class="row bottom">
+    <div id="autospec" class="autospec one-half column">
+      <textarea autofocus placeholder="Description de l'automate"></textarea>
+      <textarea readonly></textarea>
+    </div>
+    <div id="autoimg" class="autoimg one-half column">
+    </div>
+  </div>
+</div>
+<script>
+require("app").default();
+</script>
+</body>
+</html>

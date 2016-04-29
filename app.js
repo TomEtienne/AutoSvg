@@ -36,7 +36,9 @@
   };
 
   var initModule = function(name, definition) {
-    var module = {id: name, exports: {}};
+    var hot = null;
+    hot = hmr && hmr.createHot(name);
+    var module = {id: name, exports: {}, hot: hot};
     cache[name] = module;
     definition(module.exports, localRequire(name), module);
     return module.exports;
@@ -44,6 +46,10 @@
 
   var expandAlias = function(name) {
     return aliases[name] ? expandAlias(aliases[name]) : name;
+  };
+
+  var _resolve = function(name, dep) {
+    return expandAlias(expand(dirname(name), dep));
   };
 
   var require = function(name, loaderPath) {
@@ -58,12 +64,6 @@
 
   require.alias = function(from, to) {
     aliases[to] = from;
-  };
-
-  require.reset = function() {
-    modules = {};
-    cache = {};
-    aliases = {};
   };
 
   var extRe = /\.[^.\/]+$/;
@@ -99,19 +99,56 @@
   };
 
   require.list = function() {
-    var result = [];
+    var list = [];
     for (var item in modules) {
       if (has.call(modules, item)) {
-        result.push(item);
+        list.push(item);
       }
     }
-    return result;
+    return list;
   };
 
-  require.brunch = true;
+  var hmr = globals._hmr && new globals._hmr(_resolve, require, modules, cache);
   require._cache = cache;
+  require.hmr = hmr && hmr.wrap;
+  require.brunch = true;
   globals.require = require;
 })();
+
+(function() {
+var global = window;
+var process;
+var __makeRelativeRequire = function(require, mappings, pref) {
+  var none = {};
+  var tryReq = function(name, pref) {
+    var val;
+    try {
+      val = require(pref + '/node_modules/' + name);
+      return val;
+    } catch (e) {
+      if (e.toString().indexOf('Cannot find module') === -1) {
+        throw e;
+      }
+
+      if (pref.indexOf('node_modules') !== -1) {
+        var s = pref.split('/');
+        var i = s.lastIndexOf('node_modules');
+        var newPref = s.slice(0, i).join('/');
+        return tryReq(name, newPref);
+      }
+    }
+    return none;
+  };
+  return function(name) {
+    if (name in mappings) name = mappings[name];
+    if (!name) return;
+    if (name[0] !== '.' && pref) {
+      var val = tryReq(name, pref);
+      if (val !== none) return val;
+    }
+    return require(name);
+  }
+};
 require.register("app/controller.js", function(exports, require, module) {
 "use strict";
 
@@ -195,7 +232,7 @@ var stateDimensions = function stateDimensions(statesG) {
   var minRadius = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
 
   var text = statesG.append("text").html(function (d) {
-    return d.label();
+    return d.label;
   });
 
   var data = text.data();
@@ -261,155 +298,235 @@ var edgeDimensions = function edgeDimensions(edgesG, maxWidth) {
   }
 };
 
-var lineGenerator = _d2.default.svg.line().x(function (d) {
+var edgePathGenerator = _d2.default.svg.line().x(function (d) {
   return d.x;
 }).y(function (d) {
   return d.y;
-}).interpolate("bundle").tension(0.7);
+}).interpolate("bundle").tension(0.8);
 
 var sq = function sq(x) {
   return x * x;
 };
 
-var sign = function sign(b) {
-  return (b | 0) * 2 - 1;
+var sign = function sign(bool) {
+  return (bool | 0) * 2 - 1;
 };
 
-var intersection = function intersection(h, w, xA, yA, x0, y0) {
+var intersection = function intersection(x, y, tx, ty, a, b) {
   return {
-    x: x0 + sign(xA > x0) * Math.sqrt(0.5 / (sq(1 / w) + sq((yA - y0) / (h * (xA - x0))))),
-    y: y0 + sign(yA > y0) * Math.sqrt(0.5 / (sq(1 / h) + sq((xA - x0) / (w * (yA - y0)))))
+    x: x + sign(tx > 0) * Math.sqrt(1 / (sq(1 / a) + sq(ty / (b * tx)))),
+    y: y + sign(ty > 0) * Math.sqrt(1 / (sq(1 / b) + sq(tx / (a * ty))))
   };
 };
 
-var applyOffset = function applyOffset(offset, x, y, x0, y0) {
-  var r = offset / Math.sqrt(sq(x - x0) + sq(y - y0));
+var translate = function translate(x, y, tx, ty, d) {
+  var r = d === undefined ? 1 : d / Math.sqrt(sq(tx) + sq(ty));
   return {
-    x: x + (x - x0) * r,
-    y: y + (y - y0) * r
+    x: x + tx * r,
+    y: y + ty * r
   };
 };
 
-var fixIntersections = function fixIntersections(edges) {
-  var offset = arguments.length <= 1 || arguments[1] === undefined ? 0 : arguments[1];
+var drawInitArrow = function drawInitArrow(statesG, initArrowLength, arrowWidth, terminalSpacing) {
+  statesG.filter(function (d) {
+    return d.initial;
+  }).append("line").each(function (d) {
+    var _ellipseRadiusFromSta = ellipseRadiusFromState(d, terminalSpacing);
 
-  var from = void 0,
-      to = void 0,
-      points = void 0,
-      start = void 0,
-      end = void 0,
-      newStart = void 0,
-      newEnd = void 0;
-  var _iteratorNormalCompletion = true;
-  var _didIteratorError = false;
-  var _iteratorError = undefined;
+    var a = _ellipseRadiusFromSta.a;
+    var b = _ellipseRadiusFromSta.b;
 
-  try {
-    for (var _iterator = edges[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      var e = _step.value;
-
-      from = e.from;
-      to = e.to;
-      points = e.points();
-      start = points[0];
-      end = points[points.length - 1];
-      newStart = intersection(from.height(), from.width(), start.x, start.y, from.x(), from.y());
-      newEnd = intersection(to.height(), to.width(), end.x, end.y, to.x(), to.y());
-      points.splice(1, 0, newStart);
-      points.splice(points.length - 1, 0, applyOffset(offset, newEnd.x, newEnd.y, to.x(), to.y()));
-      e.points(points);
+    d.arrowPos = {};
+    var intersect = intersection(d.x(), d.y(), -1, 0, a, b);
+    d.arrowPos.base = {
+      x: intersect.x - arrowWidth - d.x(),
+      y: intersect.y - d.y()
+    };
+    d.arrowPos.start = {
+      x: d.arrowPos.base.x - initArrowLength,
+      y: d.arrowPos.base.y
+    };
+  }).attr("stroke", "black").attr("marker-end", "url(#arrow)").attr({
+    x1: function x1(d) {
+      return d.x() + d.arrowPos.start.x;
+    },
+    y1: function y1(d) {
+      return d.y() + d.arrowPos.start.y;
+    },
+    x2: function x2(d) {
+      return d.x() + d.arrowPos.base.x;
+    },
+    y2: function y2(d) {
+      return d.y() + d.arrowPos.base.y;
     }
-  } catch (err) {
-    _didIteratorError = true;
-    _iteratorError = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion && _iterator.return) {
-        _iterator.return();
-      }
-    } finally {
-      if (_didIteratorError) {
-        throw _iteratorError;
-      }
-    }
-  }
+  });
 };
 
-function draw(fsm, container, cfg) {
+var fixIntersection = function fixIntersection(center, controlPoint, semimajor, semiminor) {
+  return intersection(center.x, center.y, controlPoint.x - center.x, controlPoint.y - center.y, semimajor, semiminor);
+};
 
-  // Gather width and height from labels
-  // Layout
-  // Draw
-  cleanup(container);
+var ellipseRadiusFromState = function ellipseRadiusFromState(s, terminalSpacing) {
+  var pad = s.terminal ? terminalSpacing : 0;
+  return {
+    a: s.width() / Math.sqrt(2) + pad,
+    b: s.height() / Math.sqrt(2) + pad
+  };
+};
 
-  var svg = _d2.default.select(container).append("svg");
+var norm = function norm(x, y) {
+  return Math.sqrt(sq(x) + sq(y));
+};
 
-  var defs = svg.append("defs");
+var drawEdgePaths = function drawEdgePaths(edgesG) {
+  edgesG.append("path").each(function (d) {
+    d.path = this;
+  }).attr("marker-end", "url(#arrow)");
+};
 
-  var arrowWidth = 8;
-  var arrowHeight = 6;
+var updateEdgePaths = function updateEdgePaths(paths, arrowWidth, terminalSpacing) {
+  paths.attr("d", function (d) {
+    var points = d.points;
+    var a = void 0,
+        b = void 0;
 
+    var _ellipseRadiusFromSta2 = ellipseRadiusFromState(d.from, terminalSpacing);
+
+    a = _ellipseRadiusFromSta2.a;
+    b = _ellipseRadiusFromSta2.b;
+
+    points[0] = fixIntersection(points[0], points[1], a, b);
+
+    var _ellipseRadiusFromSta3 = ellipseRadiusFromState(d.to, terminalSpacing);
+
+    a = _ellipseRadiusFromSta3.a;
+    b = _ellipseRadiusFromSta3.b;
+
+    var controlPoint = points[points.length - 2];
+    var tip = fixIntersection(points[points.length - 1], controlPoint, a, b);
+    if (norm(controlPoint.x - tip.x, controlPoint.y - tip.y) < arrowWidth) {
+      // FIXME: That's an ugly hack for when the base of arrowhead is farther
+      // that the control point
+      // A solution is to keep the full path and use stroke dash-array to only
+      // draw the part we need
+      controlPoint = translate(controlPoint.x, controlPoint.y, (points[points.length - 3].x - controlPoint.x) / 1.7, (points[points.length - 3].y - controlPoint.y) / 1.7);
+      tip = fixIntersection(points[points.length - 1], controlPoint, a, b);
+      points[points.length - 2] = controlPoint;
+    }
+    var base = translate(tip.x, tip.y, controlPoint.x - tip.x, controlPoint.y - tip.y, arrowWidth);
+    points[points.length - 1] = base;
+    return edgePathGenerator(points);
+  });
+};
+
+var defineArrowHead = function defineArrowHead(defs, width, height) {
   defs.append("marker").attr({
     "id": "arrow",
     "refX": 0,
-    "refY": arrowHeight / 2,
-    "markerWidth": arrowWidth,
-    "markerHeight": arrowHeight,
+    "refY": height / 2,
+    "markerWidth": width,
+    "markerHeight": height,
     "markerUnits": "userSpaceOnUse",
     "orient": "auto"
-  }).append("path").attr("d", "M0,0 L0," + arrowHeight + " L" + arrowWidth + "," + arrowHeight / 2 + " z").attr("class", "arrowHead");
+  }).append("path").attr("d", "M0,0 L0," + height + " L" + width + "," + height / 2 + " z").attr("class", "arrowHead");
+};
 
+function draw(fsm, container) {
+
+  // Init
+  cleanup(container);
+  var svg = _d2.default.select(container).append("svg");
+
+  // Defs
+  var defs = svg.append("defs");
+  var arrowWidth = 7;
+  var terminalSpacing = 3;
+  var initArrowLength = arrowWidth;
+  defineArrowHead(defs, arrowWidth, 5);
+
+  // Container
   var g = svg.append("g");
   svg.call(_d2.default.behavior.zoom().on("zoom", zoom(g)));
 
-  var states = Array.from(fsm.states.all());
-  var edges = Array.from(fsm.edges.all());
+  // Groups
+  var statesG = g.selectAll(".state").data(Array.from(fsm.states.all())).enter().append("g").attr("class", "state").attr("id", function (d) {
+    return "state_" + d.id;
+  }).each(function (d) {
+    d.edges = new Set();
+  });
 
-  var edgesG = g.selectAll(".edge").data(edges).enter().append("g").attr("class", "edge");
+  var edgesG = g.selectAll(".edge").data(Array.from(fsm.edges.all())).enter().append("g").attr("class", "edge").attr("id", function (d) {
+    return "edge_" + d.from.id + "_" + d.to.id;
+  }).each(function (d) {
+    d.from.edges.add(this);
+    d.to.edges.add(this);
+  });
 
-  var statesG = g.selectAll(".state").data(states).enter().append("g").attr("class", "state");
-
+  // Measure
   stateDimensions(statesG, 12);
   edgeDimensions(edgesG, 20, 4, 2);
 
+  // Compute layout
   fsm.layout();
 
-  fixIntersections(edges, arrowWidth);
+  // Account for ellipses and arrowheads
+  // fixIntersections(edgesG, arrowWidth);
 
-  drawEllipses(statesG);
+  // If needed
+  // drawDebug(statesG, edgesG, g);
 
-  // statesG.filter((d) => d.initial);
+  // Render
+  drawEllipses(statesG, terminalSpacing);
+  drawInitArrow(statesG, initArrowLength, arrowWidth, terminalSpacing);
+  drawStateLabels(statesG);
+  drawEdgePaths(edgesG);
+  updateEdgePaths(edgesG.selectAll("path"), arrowWidth, terminalSpacing);
+  drawEdgeLabels(edgesG, arrowWidth);
 
-  showControlPoints(edges, g);
-
-  edgesG.append("text").attr("x", function (d) {
-    return d.x();
-  }).attr("y", function (d) {
-    return d.y();
-  }).attr("text-anchor", "middle").attr("dominant-baseline", function (d) {
-    return d.lines.length > 1 ? "text-before-edge" : "central";
-  }).html(function (d) {
-    return gatherLines(d.lines, d.x(), -d.height() / 2);
+  // Drag'n'Drop
+  var drag = _d2.default.behavior.drag().on("dragstart", function () {
+    _d2.default.event.sourceEvent.stopPropagation();
+  }).on("drag", function (d) {
+    d.x(_d2.default.event.x).y(_d2.default.event.y);
+    updateState(_d2.default.select(this), arrowWidth, terminalSpacing);
   });
 
-  statesG.append("text").attr("x", function (d) {
-    return d.x();
-  }).attr("y", function (d) {
-    return d.y();
-  }).attr("text-anchor", "middle").attr("dominant-baseline", "central").html(function (d) {
-    return d.label();
-  });
-
-  edgesG.append("path").attr("d", function (d) {
-    var points = d.points();
-    points.splice(0, 1);
-    points.splice(points.length - 1, 1);
-    return lineGenerator(points);
-  }).attr("marker-end", "url(#arrow)");
+  statesG.call(drag);
 }
 
-var drawEllipses = function drawEllipses(statesG) {
-  statesG.append("ellipse").attr("rx", function (d) {
+var updateState = function updateState(sG, arrowWidth, terminalSpacing) {
+  sG.selectAll("ellipse").attr("cx", function (d) {
+    return d.x();
+  }).attr("cy", function (d) {
+    return d.y();
+  });
+
+  sG.selectAll("text").attr("x", function (d) {
+    return d.x();
+  }).attr("y", function (d) {
+    return d.y();
+  });
+
+  sG.selectAll("line").attr({
+    x1: function x1(d) {
+      return d.x() + d.arrowPos.start.x;
+    },
+    y1: function y1(d) {
+      return d.y() + d.arrowPos.start.y;
+    },
+    x2: function x2(d) {
+      return d.x() + d.arrowPos.base.x;
+    },
+    y2: function y2(d) {
+      return d.y() + d.arrowPos.base.y;
+    }
+  });
+
+  updateEdgePaths(_d2.default.selectAll(Array.from(sG.datum().edges)).selectAll("path"), arrowWidth, terminalSpacing);
+};
+
+var drawEllipses = function drawEllipses(statesG, terminalSpacing) {
+  statesG.append("ellipse").attr("class", "contour").attr("rx", function (d) {
     return d.width() / Math.sqrt(2);
   }).attr("ry", function (d) {
     return d.height() / Math.sqrt(2);
@@ -417,6 +534,62 @@ var drawEllipses = function drawEllipses(statesG) {
     return d.x();
   }).attr("cy", function (d) {
     return d.y();
+  });
+
+  statesG.filter(function (d) {
+    return d.terminal;
+  }).append("ellipse").attr("class", "doubling").attr("rx", function (d) {
+    return d.width() / Math.sqrt(2) + terminalSpacing;
+  }).attr("ry", function (d) {
+    return d.height() / Math.sqrt(2) + terminalSpacing;
+  }).attr("cx", function (d) {
+    return d.x();
+  }).attr("cy", function (d) {
+    return d.y();
+  });
+};
+
+var drawStateLabels = function drawStateLabels(statesG) {
+  statesG.append("text").attr("x", function (d) {
+    return d.x();
+  }).attr("y", function (d) {
+    return d.y();
+  }).attr("text-anchor", "middle").attr("dominant-baseline", "central").html(function (d) {
+    return d.label;
+  });
+};
+
+var drawEdgeLabels = function drawEdgeLabels(edgesG, arrowWidth) {
+  edgesG.append("text").each(function (d) {
+    var l = d.path.getTotalLength() + arrowWidth;
+    var middle = d.path.getPointAtLength(l / 2);
+    var points = d.points;
+    var midIndex = (points.length - 1) / 2;
+    var epsilon = 3;
+    var outwardx = 0;
+    var outwardy = 0;
+    var i = 1;
+    while (Math.abs(outwardx) < epsilon && Math.abs(outwardy) < epsilon && i <= midIndex) {
+      outwardx = 2 * points[midIndex].x - points[midIndex - i].x - points[midIndex + i].x;
+      outwardy = 2 * points[midIndex].y - points[midIndex - i].y - points[midIndex + i].y;
+      i++;
+    }
+    if (Math.abs(outwardx) < epsilon && Math.abs(outwardy) < epsilon) {
+      outwardx = points[midIndex - 1].y - points[midIndex + 1].y;
+      outwardy = points[midIndex + 1].x - points[midIndex - 1].x;
+    }
+    var n = norm(outwardx, outwardy);
+    outwardx = outwardx / n;
+    outwardy = outwardy / n;
+    d.x(middle.x + outwardx * d.width() / 2.2).y(middle.y + outwardy * d.height() / 2.2);
+  }).attr("x", function (d) {
+    return d.x();
+  }).attr("y", function (d) {
+    return d.y();
+  }).attr("text-anchor", "middle").attr("dominant-baseline", function (d) {
+    return d.lines.length > 1 ? "text-before-edge" : "central";
+  }).html(function (d) {
+    return gatherLines(d.lines, d.x(), -d.height() / 2);
   });
 };
 
@@ -426,18 +599,8 @@ var zoom = function zoom(g) {
   };
 };
 
-var showControlPoints = function showControlPoints(edges, svg) {
-
-  var points = Array.prototype.concat.apply([], edges.map(function (e) {
-    return e.points();
-  }));
-  svg.selectAll(".point").data(points).enter().append("circle").attr("class", "point").attr("r", 1.5).attr("cx", function (d) {
-    return d.x;
-  }).attr("cy", function (d) {
-    return d.y;
-  }).style("fill", "#FF7777");
-
-  svg.selectAll(".state").append("rect").attr("x", function (d) {
+var drawDebug = function drawDebug(statesG, edgesG, svg) {
+  statesG.append("rect").attr("class", "debug-rect").attr("x", function (d) {
     return d.x() - d.width() / 2;
   }).attr("y", function (d) {
     return d.y() - d.height() / 2;
@@ -447,7 +610,7 @@ var showControlPoints = function showControlPoints(edges, svg) {
     return d.height();
   }).style("fill", "#55CCFF");
 
-  svg.selectAll(".edge").append("rect").attr("x", function (d) {
+  edgesG.append("rect").attr("class", "debug-rect").attr("x", function (d) {
     return d.x() - d.width() / 2;
   }).attr("y", function (d) {
     return d.y() - d.height() / 2;
@@ -456,6 +619,14 @@ var showControlPoints = function showControlPoints(edges, svg) {
   }).attr("height", function (d) {
     return d.height();
   }).style("fill", "#AAFFAA");
+
+  edgesG.selectAll(".debug-circle").data(function (d) {
+    return d.points;
+  }).enter().append("circle").attr("class", "debug-circle").attr("r", 1.5).attr("cx", function (d) {
+    return d.x;
+  }).attr("cy", function (d) {
+    return d.y;
+  }).style("fill", "#FF7777");
 };
 
 var cleanup = function cleanup(container) {
@@ -577,7 +748,7 @@ var _draw2 = _interopRequireDefault(_draw);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var figures = ["1-1", "1-2", "2-1-a", "2-1-b", "2-1-c", "2-2-a", "2-2-b", "2-2-c", "2-4"];
+var figures = ["1-1", "1-2", "2-1-a", "2-1-b", "2-1-c", "2-2-a", "2-2-b", "2-2-c", "2-4", "2-6", "2-6-alt", "2-9", "2-14"];
 
 function main() {
   var container = document.getElementsByClassName("container")[0];
@@ -714,6 +885,48 @@ function layout() {
 
 });
 
+;require.register("app/render.js", function(exports, require, module) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = render;
+
+var _draw = require("./draw");
+
+var _draw2 = _interopRequireDefault(_draw);
+
+var _pipeline = require("../lib/pipeline");
+
+var _pipeline2 = _interopRequireDefault(_pipeline);
+
+var _exception = require("../lib/utils/exception");
+
+var _exception2 = _interopRequireDefault(_exception);
+
+var _error = require("../lib/error");
+
+var _error2 = _interopRequireDefault(_error);
+
+var _d = require("d3");
+
+var _d2 = _interopRequireDefault(_d);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function render(cal, container) {
+  var fsm = (0, _pipeline2.default)(cal);
+  if ((0, _exception2.default)(fsm)) {
+    _d2.default.select(container)[0][0].innerHTML = "<pre>" + (0, _error2.default)(fsm) + "</pre>";
+  } else {
+    fsm.layout();
+    (0, _draw2.default)(fsm, container);
+  }
+}
+
+});
+
 ;require.register("lib/error.js", function(exports, require, module) {
 "use strict";
 
@@ -741,15 +954,18 @@ function stringifyError(e) {
     var name = _translate.name;
     var undefinedArticle = _translate.undefinedArticle;
 
-    return "Le bloc " + (undefinedArticle + name) + " " + e.value + " redéfini en " + printLoc(e.loc2) + " est déjà défini en " + printLoc(e.loc1);
+    return "Le bloc " + (undefinedArticle + name) + " redéfini en " + printLoc(e.loc2) + " est déjà défini en " + printLoc(e.loc1);
   }), _defineProperty(_treat, _check.exception.existingId, function (e) {
     var _translate2 = translate(e.type);
 
     var name = _translate2.name;
     var undefinedArticle = _translate2.undefinedArticle;
 
-    return "L'identifiant " + (undefinedArticle + name) + " " + e.value + " redéfini en " + printLoc(e.loc2) + " est déjà défini en " + printLoc(e.loc1);
+    return "L'identifiant " + (undefinedArticle + name) + " " + e.value + " est redéfini en " + printLoc(e.loc);
+    // FIXME
+    // return `L'identifiant ${undefinedArticle + name} ${e.value} redéfini en ${printLoc(e.loc2)} est déjà défini en ${printLoc(e.loc1)}`;
   }), _defineProperty(_treat, _check.exception.wrongType, function (e) {
+    // log.error(e);
     return "La valeur déclarée en " + printLoc(e.loc) + " doit être de type " + e.type;
   }), _defineProperty(_treat, _check.exception.unknownProp, function (e) {
     return "L'attribut " + e.propertyName + " défini en " + printLoc(e.loc) + " n'est pas supporté";
@@ -824,8 +1040,7 @@ function translate(type) {
 }
 
 function printLoc(loc) {
-  return "0:0";
-  // return loc.start.line + ":" + loc.start.column;
+  return loc.start.line + ":" + loc.start.column;
 }
 
 function treatSyntaxException(e) {
@@ -833,7 +1048,7 @@ function treatSyntaxException(e) {
     if (ex.value === "[ \\t\\n\\r]") {
       return "espace, tabuluation, saut de ligne, retour chariot";
     }
-    return ex;
+    return ex.value;
   }).join("\n");
   return "Erreur de syntaxe en " + printLoc(e.location) + ". " + e.found + " trouvé.\n    Tokens autorisés : " + expected;
 }
@@ -891,9 +1106,7 @@ var checks = {};
  * @global
  */
 
-var identity = function identity(x) {
-  return x;
-};
+// const identity = (x) => x;
 
 // FIXME
 // checks.Mixin = check().defaults(identity).instanceOf(Function);
@@ -1033,6 +1246,9 @@ function Fsm(cfg) {
     transitions: new Map()
   };
 
+  data.states.initials = new Set();
+  data.states.terminals = new Set();
+
   var struct = this;
 
   // API
@@ -1138,7 +1354,7 @@ function Fsm(cfg) {
     }, {
       key: "initial",
       get: function get() {
-        return data.states.get(this).initial;
+        return !!data.states.get(this).initial;
       }
       /**
        * Whether the state is terminal
@@ -1149,7 +1365,7 @@ function Fsm(cfg) {
     }, {
       key: "terminal",
       get: function get() {
-        return data.states.get(this).terminal;
+        return !!data.states.get(this).terminal;
       }
       /**
        * @return {Iterator.<module:lib/fsm~Fsm~State>} every state
@@ -1159,6 +1375,24 @@ function Fsm(cfg) {
       key: "all",
       value: function all() {
         return getStates(data);
+      }
+      /**
+       * @return {Iterator.<module:lib/fsm~Fsm~State>} every initial state
+       */
+
+    }, {
+      key: "initials",
+      value: function initials() {
+        return getInitialStates(data);
+      }
+      /**
+       * @return {Iterator.<module:lib/fsm~Fsm~State>} every initial state
+       */
+
+    }, {
+      key: "terminals",
+      value: function terminals() {
+        return getTerminalStates(data);
       }
       /**
        * Removes a state and the associated transitions
@@ -1408,6 +1642,12 @@ var addState = function addState(o, state, data) {
   o.succ = new Map();
   o.pred = new Map();
   data.states.set(state, o);
+  if (o.initial) {
+    data.states.initials.add(state);
+  }
+  if (o.terminal) {
+    data.states.terminals.add(state);
+  }
   return state;
 };
 
@@ -1448,6 +1688,14 @@ var getSymbols = function getSymbols(data) {
 
 var getStates = function getStates(data) {
   return data.states.keys();
+};
+
+var getInitialStates = function getInitialStates(data) {
+  return data.states.initials.values();
+};
+
+var getTerminalStates = function getTerminalStates(data) {
+  return data.states.terminals.values();
 };
 
 var getTransitions = function getTransitions(data) {
@@ -1605,6 +1853,12 @@ var removeState = function removeState(s, data) {
     }
   }
 
+  if (s.initial) {
+    data.states.initials.delete(s);
+  }
+  if (s.terminal) {
+    data.states.terminals.delete(s);
+  }
   data.states.delete(s);
 };
 
@@ -1672,8 +1926,6 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
               }
               return {desc, loc};
             },
-          "finite automaton",
-          { type: "literal", value: "finite automaton", description: "\"finite automaton\"" },
           function(t) {
                   desc.type = t;
                   loc.type = location();
@@ -1847,8 +2099,8 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
                       location: loc
                   };
               },
-          /^[a-zA-Z_0-9]/,
-          { type: "class", value: "[a-zA-Z_0-9]", description: "[a-zA-Z_0-9]" },
+          /^[a-zA-Z_0-9\-]/,
+          { type: "class", value: "[a-zA-Z_0-9\\-]", description: "[a-zA-Z_0-9\\-]" },
           function(id) {
                   return {
                       data: id,
@@ -1883,33 +2135,33 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
 
         peg$bytecode = [
           peg$decode("%;!/J#;;/A$;/.\" &\"/3$;\"/*$8$: $##! )($'#(#'#(\"'#&'#"),
-          peg$decode("%%2!\"\"6!7\"/\"!&,)/' 8!:#!! )"),
+          peg$decode("%;1/' 8!:!!! )"),
           peg$decode("%;9/5#;#/,$;:/#$+#)(#'#(\"'#&'#"),
           peg$decode("$;$0#*;$&"),
           peg$decode(";%.) &;&.# &;'"),
-          peg$decode("%2$\"\"6$7%/\\#;;/S$;/.\" &\"/E$;9/<$;(/3$;:/*$8&:&&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%2'\"\"6'7(/\\#;;/S$;/.\" &\"/E$;9/<$;)/3$;:/*$8&:)&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%2*\"\"6*7+/[#;;/R$;/.\" &\"/D$;9/;$;*/2$;:/)$8&:,&\"#!)(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%$;+0#*;+&/' 8!:-!! )"),
-          peg$decode("%$;,0#*;,&/' 8!:.!! )"),
-          peg$decode("%$;-0#*;-&/' 8!:/!! )"),
-          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:0#\"\" )(#'#(\"'#&'#"),
-          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:1#\"\" )(#'#(\"'#&'#"),
-          peg$decode("%;1/\x87#;;/~$;1/u$;;/l$22\"\"6273/]$;;/T$;./K$;;/B$;/.\" &\"/4$;;/+$8*:4*$)'#!)(*'#()'#(('#(''#(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%;1/A#25\"\"6576/2$;./)$8#:7#\"\" )(#'#(\"'#&'#./ &%;1/' 8!:8!! )"),
-          peg$decode("%29\"\"697:/P#$;00#*;0&/@$2;\"\"6;7</1$;;/($8$:=$!\")($'#(#'#(\"'#&'#"),
-          peg$decode("%;1/\\#;;/S$2>\"\"6>7?/D$;;/;$;8/2$;;/)$8&:@&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\u0116 &%;1/\\#;;/S$2>\"\"6>7?/D$;;/;$;4/2$;;/)$8&:A&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\xCD &%;1/\\#;;/S$2>\"\"6>7?/D$;;/;$;3/2$;;/)$8&:B&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\x84 &%;1/\\#;;/S$2>\"\"6>7?/D$;;/;$;5/2$;;/)$8&:C&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.; &%;1/1#;;/($8\":D\"!!)(\"'#&'#"),
-          peg$decode("%%$4E\"\"5!7F/,#0)*4E\"\"5!7F&&&#/\"!&,)/' 8!:G!! )"),
-          peg$decode("$4H\"\"5!7I0)*4H\"\"5!7I&"),
-          peg$decode("%2J\"\"6J7K/G#%;2/\"!&,)/7$2J\"\"6J7K/($8#:L#!!)(#'#(\"'#&'#"),
-          peg$decode("%%%2M\"\"6M7N/\x8C#%%;7/P#;7/G$;7/>$;7/5$;7/,$;7/#$+&)(&'#(%'#($'#(#'#(\"'#&'#.? &%;7/5#;7/,$;7/#$+#)(#'#(\"'#&'#/\"!&,)/#$+\")(\"'#&'#/\"!&,)/' 8!:O!! )"),
-          peg$decode("%%$;60#*;6&/W#%2P\"\"6P7Q/9#$;6/&#0#*;6&&&#/#$+\")(\"'#&'#.\" &\"/#$+\")(\"'#&'#/\"!&,)"),
+          peg$decode("%2\"\"\"6\"7#/\\#;;/S$;/.\" &\"/E$;9/<$;(/3$;:/*$8&:$&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%2%\"\"6%7&/\\#;;/S$;/.\" &\"/E$;9/<$;)/3$;:/*$8&:'&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%2(\"\"6(7)/[#;;/R$;/.\" &\"/D$;9/;$;*/2$;:/)$8&:*&\"#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%$;+0#*;+&/' 8!:+!! )"),
+          peg$decode("%$;,0#*;,&/' 8!:,!! )"),
+          peg$decode("%$;-0#*;-&/' 8!:-!! )"),
+          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:.#\"\" )(#'#(\"'#&'#"),
+          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:/#\"\" )(#'#(\"'#&'#"),
+          peg$decode("%;1/\x87#;;/~$;1/u$;;/l$20\"\"6071/]$;;/T$;./K$;;/B$;/.\" &\"/4$;;/+$8*:2*$)'#!)(*'#()'#(('#(''#(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%;1/A#23\"\"6374/2$;./)$8#:5#\"\" )(#'#(\"'#&'#./ &%;1/' 8!:6!! )"),
+          peg$decode("%27\"\"6778/Y#;;/P$$;00#*;0&/@$29\"\"697:/1$;;/($8%:;%!\")(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;8/2$;;/)$8&:>&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\u0116 &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;4/2$;;/)$8&:?&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\xCD &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;3/2$;;/)$8&:@&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\x84 &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;5/2$;;/)$8&:A&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.; &%;1/1#;;/($8\":B\"!!)(\"'#&'#"),
+          peg$decode("%%$4C\"\"5!7D/,#0)*4C\"\"5!7D&&&#/\"!&,)/' 8!:E!! )"),
+          peg$decode("$4F\"\"5!7G0)*4F\"\"5!7G&"),
+          peg$decode("%2H\"\"6H7I/G#%;2/\"!&,)/7$2H\"\"6H7I/($8#:J#!!)(#'#(\"'#&'#"),
+          peg$decode("%%%2K\"\"6K7L/\x8C#%%;7/P#;7/G$;7/>$;7/5$;7/,$;7/#$+&)(&'#(%'#($'#(#'#(\"'#&'#.? &%;7/5#;7/,$;7/#$+#)(#'#(\"'#&'#/\"!&,)/#$+\")(\"'#&'#/\"!&,)/' 8!:M!! )"),
+          peg$decode("%%$;6/&#0#*;6&&&#/W#%2N\"\"6N7O/9#$;6/&#0#*;6&&&#/#$+\")(\"'#&'#.\" &\"/#$+\")(\"'#&'#/\"!&,)"),
+          peg$decode("4P\"\"5!7Q"),
           peg$decode("4R\"\"5!7S"),
-          peg$decode("4T\"\"5!7U"),
-          peg$decode("2V\"\"6V7W.) &2X\"\"6X7Y"),
+          peg$decode("2T\"\"6T7U.) &2V\"\"6V7W"),
+          peg$decode("%;;/;#2X\"\"6X7Y/,$;;/#$+#)(#'#(\"'#&'#"),
           peg$decode("%;;/;#2Z\"\"6Z7[/,$;;/#$+#)(#'#(\"'#&'#"),
-          peg$decode("%;;/;#2\\\"\"6\\7]/,$;;/#$+#)(#'#(\"'#&'#"),
-          peg$decode("$4^\"\"5!7_0)*4^\"\"5!7_&")
+          peg$decode("$4\\\"\"5!7]0)*4\\\"\"5!7]&")
         ],
 
         peg$currPos          = 0,
@@ -2526,6 +2778,8 @@ var _parser2 = _interopRequireDefault(_parser);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 var steps = {};
 
 function pipeline(aml) {
@@ -2535,11 +2789,33 @@ function pipeline(aml) {
     return l;
   }
   var desc = makePipeline().deepCompose(steps.config).deepCompose(steps.redundancy).deepCompose(steps.inference).compose(steps.gather).deepCompose(steps.indexes).resolve(l.desc);
-  log.warn(desc);
   if ((0, _check.exception)(desc)) {
-    return desc;
+    log.error(desc);
+    log.error(desc.message);
+    return putLoc(desc, l.loc);
   }
-  return (0, _sketchFsm2.default)(desc);
+  var fsm = (0, _sketchFsm2.default)(desc);
+  if ((0, _check.exception)(fsm)) {
+    return putLoc(fsm, l.loc.data);
+  }
+  return fsm;
+}
+
+function putLoc(errs, loc) {
+  var _errs$dispatch;
+
+  errs.dispatch((_errs$dispatch = {}, _defineProperty(_errs$dispatch, _check.exception.object, function (err) {
+    err.onEachProperty(function (e, prop) {
+      putLoc(e, loc[prop]);
+    });
+  }), _defineProperty(_errs$dispatch, _check.exception.array, function (err) {
+    err.onEach(function (e, i) {
+      putLoc(e, loc[i]);
+    });
+  }), _defineProperty(_errs$dispatch, "default", function _default(err) {
+    err.loc = loc;
+  }), _errs$dispatch));
+  return errs;
 }
 
 function makePipeline() {
@@ -2632,18 +2908,10 @@ steps.indexes = (0, _check2.default)().object({
   data: (0, _check2.default)().object({
     symbols: (0, _check2.default)().iterable((0, _check2.default)().add(function (a) {
       symbolsIndexes.set(a.id, symbolIndex++);
-      if (a.label === undefined) {
-        a.label = a.id;
-      }
-      delete a.id;
       return a;
     })),
     states: (0, _check2.default)().iterable((0, _check2.default)().add(function (s) {
       statesIndexes.set(s.id, stateIndex++);
-      if (s.label === undefined) {
-        s.label = s.id;
-      }
-      delete s.id;
       return s;
     })),
     transitions: (0, _check2.default)().iterable((0, _check2.default)().add(function (t) {
@@ -2778,9 +3046,9 @@ var _dagre2 = _interopRequireDefault(_dagre);
 
 var _precedence = require("./utils/precedence");
 
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+var _precedence2 = _interopRequireDefault(_precedence);
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -2805,15 +3073,13 @@ function Fsm(cfg) {
   data.transitions = new WeakMap();
   data.edges = new Map();
 
-  data.symbols.labels = new Map();
-  data.states.labels = new Map();
-  data.ids = new Set();
+  data.symbols.ids = new Map();
+  data.states.ids = new Map();
 
-  _pipeline.checks.symbolLabel = (0, _check2.default)().mandatory().ofType("string").add(function (l) {
-    if (data.symbols.labels.has(l)) {
-      return (0, _check.exception)(_check.exception.existingLabel);
-    }
-    return l;
+  _pipeline.checks.label = (0, _check2.default)().optional().ofType("string");
+
+  _pipeline.checks.symbolId = (0, _check2.default)().mandatory().ofType("string").add(function (id) {
+    return data.symbols.ids.has(id) ? _check.exception.create(_check.exception.existingId) : id;
   });
 
   var symbolsMixin = function symbolsMixin(FsmSymbol) {
@@ -2827,16 +3093,22 @@ function Fsm(cfg) {
       }
 
       _createClass(_Symbol, [{
+        key: "id",
+        get: function get() {
+          return data.symbols.get(this).id;
+        }
+      }, {
         key: "label",
         get: function get() {
-          return data.symbols.get(this).label;
+          var symData = data.symbols.get(this);
+          return symData.label != null ? symData.label : symData.id;
         }
       }, {
         key: "description",
         get: function get() {
           var a = data.symbols.get(this);
           var d = {};
-          var _arr = ["label", "color", "bold", "italic"];
+          var _arr = ["id", "label", "color", "bold", "italic"];
           for (var _i = 0; _i < _arr.length; _i++) {
             var prop = _arr[_i];
             d[prop] = a[prop];
@@ -2846,11 +3118,13 @@ function Fsm(cfg) {
       }], [{
         key: "add",
         value: function add(descriptor) {
-          descriptor = (0, _check2.default)().object(_defineProperty({
-            label: _pipeline.checks.symbolLabel,
+          descriptor = (0, _check2.default)().object({
+            id: _pipeline.checks.symbolId,
+            label: _pipeline.checks.label,
             color: _pipeline.checks.color.opt,
-            bold: _pipeline.checks.bool.opt
-          }, "bold", _pipeline.checks.bool.opt)).resolve(descriptor);
+            bold: _pipeline.checks.bool.opt,
+            italic: _pipeline.checks.bool.opt
+          }).resolve(descriptor);
           if ((0, _check.exception)(descriptor)) {
             return descriptor;
           }
@@ -2859,6 +3133,7 @@ function Fsm(cfg) {
             return symbol;
           }
           data.symbols.set(symbol, descriptor);
+          data.symbols.ids.set(descriptor.id, symbol);
           return symbol;
         }
       }]);
@@ -2874,11 +3149,8 @@ function Fsm(cfg) {
     return _Symbol;
   };
 
-  _pipeline.checks.stateLabel = (0, _check2.default)().mandatory().ofType("string").add(function (l) {
-    if (data.states.labels.has(l)) {
-      return (0, _check.exception)(_check.exception.existingLabel);
-    }
-    return label;
+  _pipeline.checks.stateId = (0, _check2.default)().mandatory().ofType("string").add(function (id) {
+    return data.states.ids.has(id) ? _check.exception.create(_check.exception.existingId) : id;
   });
 
   var statesMixin = function statesMixin(FsmState) {
@@ -2892,6 +3164,17 @@ function Fsm(cfg) {
       }
 
       _createClass(State, [{
+        key: "id",
+        get: function get() {
+          return data.states.get(this).id;
+        }
+      }, {
+        key: "label",
+        get: function get() {
+          var stateData = data.states.get(this);
+          return stateData.label != null ? stateData.label : stateData.id;
+        }
+      }, {
         key: "description",
         get: function get() {
           var s = data.states.get(this);
@@ -2939,9 +3222,7 @@ function Fsm(cfg) {
             return state;
           }
           data.states.set(state, descriptor);
-          // TODO cleanup
-          var id = randomId(data);
-          data.states.get(state).id = id;
+          data.states.ids.set(descriptor.id, state);
           return state;
         }
       }]);
@@ -2950,7 +3231,6 @@ function Fsm(cfg) {
     }(FsmState);
 
     addAccessors(State.prototype, "states", data, {
-      label: { check: _pipeline.checks.string, precedence: [], default: "" },
       x: { check: _pipeline.checks.integer, precedence: [function () {
           return data.states.get(this).x;
         }, function () {
@@ -3120,6 +3400,15 @@ function Fsm(cfg) {
       get: function get() {
         return data.edges.get(this).to;
       }
+    }, {
+      key: "points",
+      get: function get() {
+        var edgeData = data.edges.get(this);
+        var points = copyPoints((0, _precedence2.default)(edgeData.controls, edgeData.computedControls, []));
+        points.splice(0, 0, { x: edgeData.from.x(), y: edgeData.from.y() });
+        points.splice(points.length, 0, { x: edgeData.to.x(), y: edgeData.to.y() });
+        return points;
+      }
     }], [{
       key: "all",
       value: function all() {
@@ -3131,21 +3420,15 @@ function Fsm(cfg) {
   }();
 
   addAccessors(Edge.prototype, "edges", data, {
+    controls: { check: (0, _check2.default)().iterable() /*TODO*/, precedence: [function () {
+        return copyPoints(data.edges.get(this).computedControls);
+      }] },
     height: { check: _pipeline.checks.integer, precedence: [], default: 0 },
     width: { check: _pipeline.checks.integer, precedence: [], default: 0 },
-    points: { check: (0, _check2.default)().iterable(), precedence: [function () {
-        return copyPoints(data.edges.get(this).points);
-      }, function () {
-        return copyPoints(data.edges.get(this).computedPoints);
-      }] },
     x: { check: _pipeline.checks.integer, precedence: [function () {
-        return data.edges.get(this).x;
-      }, function () {
         return data.edges.get(this).computedX;
       }], default: 0 },
     y: { check: _pipeline.checks.integer, precedence: [function () {
-        return data.edges.get(this).y;
-      }, function () {
         return data.edges.get(this).computedY;
       }], default: 0 },
     label: { check: (0, _check2.default)().iterable(), precedence: [function () {
@@ -3168,20 +3451,35 @@ function Fsm(cfg) {
       edgesep: 20,
       rankdir: "LR"
     });
+
+    function addState(s) {
+      graph.setNode(s.id, {
+        width: s.width(),
+        height: s.height(),
+        label: s.label,
+        state: s
+      });
+    }
+
+    function addEdge(e) {
+      graph.setEdge(e.from.id, e.to.id, {
+        width: e.width(),
+        height: e.height(),
+        label: e.label,
+        labelpos: "c",
+        edge: e
+      });
+    }
+
     var _iteratorNormalCompletion2 = true;
     var _didIteratorError2 = false;
     var _iteratorError2 = undefined;
 
     try {
-      for (var _iterator2 = data.fsm.states.all()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+      for (var _iterator2 = data.fsm.states.initials()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
         var s = _step2.value;
 
-        graph.setNode(data.states.get(s).id, {
-          width: s.width(),
-          height: s.height(),
-          // label: s.label(),
-          state: s
-        });
+        addState(s);
       }
     } catch (err) {
       _didIteratorError2 = true;
@@ -3203,17 +3501,12 @@ function Fsm(cfg) {
     var _iteratorError3 = undefined;
 
     try {
-      for (var _iterator3 = Edge.all()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-        var e = _step3.value;
+      for (var _iterator3 = data.fsm.states.all()[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+        var _s = _step3.value;
 
-        var edgeData = data.edges.get(e);
-        graph.setEdge(data.states.get(edgeData.from).id, data.states.get(edgeData.to).id, {
-          width: e.width(),
-          height: e.height(),
-          // label: e.label,
-          // labelpos: "c",
-          edge: e
-        });
+        if (!_s.initial) {
+          addState(_s);
+        }
       }
     } catch (err) {
       _didIteratorError3 = true;
@@ -3230,19 +3523,15 @@ function Fsm(cfg) {
       }
     }
 
-    _dagre2.default.layout(graph);
     var _iteratorNormalCompletion4 = true;
     var _didIteratorError4 = false;
     var _iteratorError4 = undefined;
 
     try {
-      for (var _iterator4 = graph.nodes()[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-        var n = _step4.value;
+      for (var _iterator4 = Edge.all()[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+        var e = _step4.value;
 
-        n = graph.node(n);
-        var stateData = data.states.get(n.state);
-        stateData.computedX = n.x;
-        stateData.computedY = n.y;
+        addEdge(e);
       }
     } catch (err) {
       _didIteratorError4 = true;
@@ -3259,21 +3548,19 @@ function Fsm(cfg) {
       }
     }
 
+    _dagre2.default.layout(graph);
     var _iteratorNormalCompletion5 = true;
     var _didIteratorError5 = false;
     var _iteratorError5 = undefined;
 
     try {
-      for (var _iterator5 = graph.edges()[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-        var _e = _step5.value;
+      for (var _iterator5 = graph.nodes()[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+        var n = _step5.value;
 
-        _e = graph.edge(_e.v, _e.w);
-        var _edgeData = data.edges.get(_e.edge);
-        var points = _e.points.slice();
-        _edgeData.computedPoints = points;
-        var labelPos = points[(points.length - 1) / 2];
-        _edgeData.computedX = labelPos.x;
-        _edgeData.computedY = labelPos.y;
+        n = graph.node(n);
+        var stateData = data.states.get(n.state);
+        stateData.computedX = n.x;
+        stateData.computedY = n.y;
       }
     } catch (err) {
       _didIteratorError5 = true;
@@ -3286,6 +3573,39 @@ function Fsm(cfg) {
       } finally {
         if (_didIteratorError5) {
           throw _iteratorError5;
+        }
+      }
+    }
+
+    var _iteratorNormalCompletion6 = true;
+    var _didIteratorError6 = false;
+    var _iteratorError6 = undefined;
+
+    try {
+      for (var _iterator6 = graph.edges()[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+        var _e = _step6.value;
+
+        _e = graph.edge(_e.v, _e.w);
+        var edgeData = data.edges.get(_e.edge);
+        var points = copyPoints(_e.points);
+        var labelPos = points[(points.length - 1) / 2];
+        edgeData.computedX = labelPos.x;
+        edgeData.computedY = labelPos.y;
+        points.splice(0, 1);
+        points.splice(points.length - 1, 1);
+        edgeData.computedControls = points;
+      }
+    } catch (err) {
+      _didIteratorError6 = true;
+      _iteratorError6 = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion6 && _iterator6.return) {
+          _iterator6.return();
+        }
+      } finally {
+        if (_didIteratorError6) {
+          throw _iteratorError6;
         }
       }
     }
@@ -3307,48 +3627,47 @@ function Fsm(cfg) {
   this.edges = Edge;
   this.layout = computeLayout;
 
-  var importError = fromTree(cfg.data, this);
+  var importError = fromTree(cfg.data, this, data);
 
   if ((0, _check.exception)(importError)) {
     return importError;
   }
+
+  log.debug(data);
 }
 
 var randomHash = function randomHash() {
   return Math.random().toString(36).substring(2);
 };
 
-var randomId = function randomId(data) {
+var randomId = function randomId(ids) {
   var id = void 0;
   do {
     id = randomHash();
-  } while (data.ids.has(id));
-  data.ids.add(id);
+  } while (ids.has(id));
   return id;
 };
 
-var fromTree = function fromTree(descriptor, struct) {
+var fromTree = function fromTree(descriptor, struct, data) {
   var errors = {};
-  var labels = new Set();
   var hasErrors = false;
 
   var symbols = (0, _check2.default)().iterable((0, _check2.default)().add(function (a) {
-    var symbol = struct.symbols.add(a);
-    if (!(0, _check.exception)(symbol)) {
-      labels.add(symbol.label);
-    }
-    return symbol;
+    return struct.symbols.add(a);
   })).resolve(descriptor.symbols);
 
+  var states = (0, _check2.default)().iterable((0, _check2.default)().add(function (s) {
+    return struct.states.add(s);
+  })).resolve(descriptor.states);
+
+  var dummyDescriptor = {};
+
   if ((0, _check.exception)(symbols)) {
-    var dummyDescriptor = {};
     errors.symbols = symbols;
     symbols = symbols.output;
     for (var i = 0, dummySymbol; i < symbols.length; i++) {
       if (symbols[i] === undefined) {
-        do {
-          dummyDescriptor.label = randomHash();
-        } while (labels.has(dummyDescriptor.label));
+        dummyDescriptor.id = randomId(data.symbols.ids);
         // TODO bypass it
         dummySymbol = struct.symbols.add(dummyDescriptor);
         // Assuming this doesn't fail
@@ -3361,22 +3680,20 @@ var fromTree = function fromTree(descriptor, struct) {
     hasErrors = true;
   }
 
-  var states = (0, _check2.default)().iterable((0, _check2.default)().add(function (s) {
-    return struct.states.add(s);
-  })).resolve(descriptor.states);
-
   if ((0, _check.exception)(states)) {
-    var _dummyDescriptor = {};
     errors.states = states;
     states = states.output;
     for (var _i3 = 0, dummyState; _i3 < states.length; _i3++) {
-      // TODO bypass it
-      dummyState = struct.states.add(_dummyDescriptor);
-      // Assuming this doesn't fail
-      if ((0, _check.exception)(dummyState)) {
-        throw dummyState;
+      if (states[_i3] === undefined) {
+        // TODO bypass it
+        dummyDescriptor.id = randomId(data.states.ids);
+        dummyState = struct.states.add(dummyDescriptor);
+        // Assuming this doesn't fail
+        if ((0, _check.exception)(dummyState)) {
+          throw dummyState;
+        }
+        states[_i3] = dummyState;
       }
-      states[_i3] = dummyState;
     }
     hasErrors = true;
   }
@@ -3415,28 +3732,28 @@ var copyPoints = function copyPoints(points) {
 
 var addAccessors = function addAccessors(proto, kind, data, object) {
   var arg = void 0;
-  var _iteratorNormalCompletion6 = true;
-  var _didIteratorError6 = false;
-  var _iteratorError6 = undefined;
+  var _iteratorNormalCompletion7 = true;
+  var _didIteratorError7 = false;
+  var _iteratorError7 = undefined;
 
   try {
-    for (var _iterator6 = Object.keys(object)[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-      var method = _step6.value;
+    for (var _iterator7 = Object.keys(object)[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+      var method = _step7.value;
 
       arg = object[method];
       makeAccessor(proto, kind, method.replace("_", "-"), method, arg.check, data, arg.precedence, arg.default);
     }
   } catch (err) {
-    _didIteratorError6 = true;
-    _iteratorError6 = err;
+    _didIteratorError7 = true;
+    _iteratorError7 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion6 && _iterator6.return) {
-        _iterator6.return();
+      if (!_iteratorNormalCompletion7 && _iterator7.return) {
+        _iterator7.return();
       }
     } finally {
-      if (_didIteratorError6) {
-        throw _iteratorError6;
+      if (_didIteratorError7) {
+        throw _iteratorError7;
       }
     }
   }
@@ -4380,7 +4697,8 @@ var ObjectExceptions = function () {
     key: "onProperties",
     value: function onProperties(objectCallbacks) {
       var results = {};
-      var callback, exception;
+      var callback = void 0,
+          e = void 0;
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
       var _iteratorError = undefined;
@@ -4390,11 +4708,11 @@ var ObjectExceptions = function () {
           var prop = _step.value;
 
           callback = objectCallbacks[prop];
-          exception = this.exceptions[prop];
+          e = this.exceptions[prop];
           if (callback == null) {
-            throw exception;
+            throw e;
           }
-          results[prop] = callback.call(undefined, exception);
+          results[prop] = callback.call(undefined, e);
         }
       } catch (err) {
         _didIteratorError = true;
@@ -4417,6 +4735,7 @@ var ObjectExceptions = function () {
     key: "onEachProperty",
     value: function onEachProperty(callback) {
       var results = {};
+      var e = void 0;
       var _iteratorNormalCompletion2 = true;
       var _didIteratorError2 = false;
       var _iteratorError2 = undefined;
@@ -4425,8 +4744,8 @@ var ObjectExceptions = function () {
         for (var _iterator2 = Object.keys(this.exceptions)[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
           var prop = _step2.value;
 
-          exports.default = exception = this.exceptions[prop];
-          results[prop] = callback.call(undefined, exception, prop);
+          e = this.exceptions[prop];
+          results[prop] = callback.call(undefined, e, prop);
         }
       } catch (err) {
         _didIteratorError2 = true;
@@ -4817,4 +5136,15 @@ function lazy(self, callbacks) {
 
 });
 
-;
+;require.alias("loglevel/lib/loglevel.js", "loglevel");
+require.alias("d3/d3.js", "d3");
+require.alias("process/browser.js", "process");process = require('process');require.register("___globals___", function(exports, require, module) {
+  
+
+// Auto-loaded modules from config.npm.globals.
+window.log = require("loglevel");
+window.d3 = require("d3");
+
+
+});})();require('___globals___');
+
