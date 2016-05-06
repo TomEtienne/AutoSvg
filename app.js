@@ -36,9 +36,7 @@
   };
 
   var initModule = function(name, definition) {
-    var hot = null;
-    hot = hmr && hmr.createHot(name);
-    var module = {id: name, exports: {}, hot: hot};
+    var module = {id: name, exports: {}};
     cache[name] = module;
     definition(module.exports, localRequire(name), module);
     return module.exports;
@@ -46,10 +44,6 @@
 
   var expandAlias = function(name) {
     return aliases[name] ? expandAlias(aliases[name]) : name;
-  };
-
-  var _resolve = function(name, dep) {
-    return expandAlias(expand(dirname(name), dep));
   };
 
   var require = function(name, loaderPath) {
@@ -64,6 +58,12 @@
 
   require.alias = function(from, to) {
     aliases[to] = from;
+  };
+
+  require.reset = function() {
+    modules = {};
+    cache = {};
+    aliases = {};
   };
 
   var extRe = /\.[^.\/]+$/;
@@ -99,56 +99,19 @@
   };
 
   require.list = function() {
-    var list = [];
+    var result = [];
     for (var item in modules) {
       if (has.call(modules, item)) {
-        list.push(item);
+        result.push(item);
       }
     }
-    return list;
+    return result;
   };
 
-  var hmr = globals._hmr && new globals._hmr(_resolve, require, modules, cache);
-  require._cache = cache;
-  require.hmr = hmr && hmr.wrap;
   require.brunch = true;
+  require._cache = cache;
   globals.require = require;
 })();
-
-(function() {
-var global = window;
-var process;
-var __makeRelativeRequire = function(require, mappings, pref) {
-  var none = {};
-  var tryReq = function(name, pref) {
-    var val;
-    try {
-      val = require(pref + '/node_modules/' + name);
-      return val;
-    } catch (e) {
-      if (e.toString().indexOf('Cannot find module') === -1) {
-        throw e;
-      }
-
-      if (pref.indexOf('node_modules') !== -1) {
-        var s = pref.split('/');
-        var i = s.lastIndexOf('node_modules');
-        var newPref = s.slice(0, i).join('/');
-        return tryReq(name, newPref);
-      }
-    }
-    return none;
-  };
-  return function(name) {
-    if (name in mappings) name = mappings[name];
-    if (!name) return;
-    if (name[0] !== '.' && pref) {
-      var val = tryReq(name, pref);
-      if (val !== none) return val;
-    }
-    return require(name);
-  }
-};
 require.register("app/controller.js", function(exports, require, module) {
 "use strict";
 
@@ -2130,39 +2093,12 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
           { type: "literal", value: "=", description: "\"=\"" },
           function(name, value) { 
                 let obj = {}, loc = {};
-                obj[name.data] = (value === "true");
+                obj[name.data] = value;
                 loc[name.data] = name.location;
                 return {
                   data: obj,
                   location: loc
                 };
-              },
-          function(name, color) { 
-                  let obj = {}, loc = {}; 
-                  obj[name.data] = color; 
-                  loc[name.data] = name.location;
-                  return {
-                      data: obj,
-                      location: loc
-                  };
-              },
-          function(name, value) { 
-                  let obj = {}, loc = {}; 
-                  obj[name.data] = value;
-                  loc[name.data] = name.location;
-                  return {
-                      data: obj,
-                      location: loc
-                  };
-              },
-          function(name, value) { 
-                  let obj = {}, loc = {}; 
-                  obj[name.data] = parseFloat(value); 
-                  loc[name.data] = name.location;
-                  return {
-                      data: obj,
-                      location: loc
-                  };
               },
           function(name) { 
                   let obj = {}, loc = {}; 
@@ -2181,6 +2117,8 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
                       location: location()
                   }
               },
+          function(b) { return b === "true"; },
+          function(n) { return parseFloat(n); },
           /^[^"]/,
           { type: "class", value: "[^\\\"]", description: "[^\\\"]" },
           "\"",
@@ -2208,34 +2146,35 @@ require.register("lib/parser/grammar.peg", function(exports, require, module) {
         ],
 
         peg$bytecode = [
-          peg$decode("%;!/J#;;/A$;/.\" &\"/3$;\"/*$8$: $##! )($'#(#'#(\"'#&'#"),
+          peg$decode("%;!/J#;</A$;/.\" &\"/3$;\"/*$8$: $##! )($'#(#'#(\"'#&'#"),
           peg$decode("%;1/' 8!:!!! )"),
-          peg$decode("%;9/5#;#/,$;:/#$+#)(#'#(\"'#&'#"),
+          peg$decode("%;:/5#;#/,$;;/#$+#)(#'#(\"'#&'#"),
           peg$decode("$;$0#*;$&"),
           peg$decode(";%.) &;&.# &;'"),
-          peg$decode("%2\"\"\"6\"7#/\\#;;/S$;/.\" &\"/E$;9/<$;(/3$;:/*$8&:$&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%2%\"\"6%7&/\\#;;/S$;/.\" &\"/E$;9/<$;)/3$;:/*$8&:'&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%2(\"\"6(7)/[#;;/R$;/.\" &\"/D$;9/;$;*/2$;:/)$8&:*&\"#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%2\"\"\"6\"7#/\\#;</S$;/.\" &\"/E$;:/<$;(/3$;;/*$8&:$&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%2%\"\"6%7&/\\#;</S$;/.\" &\"/E$;:/<$;)/3$;;/*$8&:'&#%#!)(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%2(\"\"6(7)/[#;</R$;/.\" &\"/D$;:/;$;*/2$;;/)$8&:*&\"#!)(&'#(%'#($'#(#'#(\"'#&'#"),
           peg$decode("%$;+0#*;+&/' 8!:+!! )"),
           peg$decode("%$;,0#*;,&/' 8!:,!! )"),
           peg$decode("%$;-0#*;-&/' 8!:-!! )"),
-          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:.#\"\" )(#'#(\"'#&'#"),
-          peg$decode("%;1/@#;;/7$;/.\" &\"/)$8#:/#\"\" )(#'#(\"'#&'#"),
-          peg$decode("%;1/\x87#;;/~$;1/u$;;/l$20\"\"6071/]$;;/T$;./K$;;/B$;/.\" &\"/4$;;/+$8*:2*$)'#!)(*'#()'#(('#(''#(&'#(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%;1/@#;</7$;/.\" &\"/)$8#:.#\"\" )(#'#(\"'#&'#"),
+          peg$decode("%;1/@#;</7$;/.\" &\"/)$8#:/#\"\" )(#'#(\"'#&'#"),
+          peg$decode("%;1/\x87#;</~$;1/u$;</l$20\"\"6071/]$;</T$;./K$;</B$;/.\" &\"/4$;</+$8*:2*$)'#!)(*'#()'#(('#(''#(&'#(%'#($'#(#'#(\"'#&'#"),
           peg$decode("%;1/A#23\"\"6374/2$;./)$8#:5#\"\" )(#'#(\"'#&'#./ &%;1/' 8!:6!! )"),
-          peg$decode("%27\"\"6778/Y#;;/P$$;00#*;0&/@$29\"\"697:/1$;;/($8%:;%!\")(%'#($'#(#'#(\"'#&'#"),
-          peg$decode("%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;8/2$;;/)$8&:>&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\u0116 &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;4/2$;;/)$8&:?&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\xCD &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;3/2$;;/)$8&:@&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.\x84 &%;1/\\#;;/S$2<\"\"6<7=/D$;;/;$;5/2$;;/)$8&:A&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.; &%;1/1#;;/($8\":B\"!!)(\"'#&'#"),
-          peg$decode("%%$4C\"\"5!7D/,#0)*4C\"\"5!7D&&&#/\"!&,)/' 8!:E!! )"),
-          peg$decode("$4F\"\"5!7G0)*4F\"\"5!7G&"),
-          peg$decode("%2H\"\"6H7I/G#%;2/\"!&,)/7$2H\"\"6H7I/($8#:J#!!)(#'#(\"'#&'#"),
-          peg$decode("%%%2K\"\"6K7L/\x8C#%%;7/P#;7/G$;7/>$;7/5$;7/,$;7/#$+&)(&'#(%'#($'#(#'#(\"'#&'#.? &%;7/5#;7/,$;7/#$+#)(#'#(\"'#&'#/\"!&,)/#$+\")(\"'#&'#/\"!&,)/' 8!:M!! )"),
-          peg$decode("%%$;6/&#0#*;6&&&#/W#%2N\"\"6N7O/9#$;6/&#0#*;6&&&#/#$+\")(\"'#&'#.\" &\"/#$+\")(\"'#&'#/\"!&,)"),
-          peg$decode("4P\"\"5!7Q"),
-          peg$decode("4R\"\"5!7S"),
-          peg$decode("2T\"\"6T7U.) &2V\"\"6V7W"),
-          peg$decode("%;;/;#2X\"\"6X7Y/,$;;/#$+#)(#'#(\"'#&'#"),
-          peg$decode("%;;/;#2Z\"\"6Z7[/,$;;/#$+#)(#'#(\"'#&'#"),
-          peg$decode("$4\\\"\"5!7]0)*4\\\"\"5!7]&")
+          peg$decode("%27\"\"6778/Y#;</P$$;00#*;0&/@$29\"\"697:/1$;</($8%:;%!\")(%'#($'#(#'#(\"'#&'#"),
+          peg$decode("%;1/\\#;</S$2<\"\"6<7=/D$;</;$;2/2$;</)$8&:>&\"%!)(&'#(%'#($'#(#'#(\"'#&'#.; &%;1/1#;</($8\":?\"!!)(\"'#&'#"),
+          peg$decode("%%$4@\"\"5!7A/,#0)*4@\"\"5!7A&&&#/\"!&,)/' 8!:B!! )"),
+          peg$decode("%;9/' 8!:C!! ).; &;4.5 &;5./ &%;6/' 8!:D!! )"),
+          peg$decode("$4E\"\"5!7F0)*4E\"\"5!7F&"),
+          peg$decode("%2G\"\"6G7H/G#%;3/\"!&,)/7$2G\"\"6G7H/($8#:I#!!)(#'#(\"'#&'#"),
+          peg$decode("%%%2J\"\"6J7K/\x8C#%%;8/P#;8/G$;8/>$;8/5$;8/,$;8/#$+&)(&'#(%'#($'#(#'#(\"'#&'#.? &%;8/5#;8/,$;8/#$+#)(#'#(\"'#&'#/\"!&,)/#$+\")(\"'#&'#/\"!&,)/' 8!:L!! )"),
+          peg$decode("%%$;7/&#0#*;7&&&#/W#%2M\"\"6M7N/9#$;7/&#0#*;7&&&#/#$+\")(\"'#&'#.\" &\"/#$+\")(\"'#&'#/\"!&,)"),
+          peg$decode("4O\"\"5!7P"),
+          peg$decode("4Q\"\"5!7R"),
+          peg$decode("2S\"\"6S7T.) &2U\"\"6U7V"),
+          peg$decode("%;</;#2W\"\"6W7X/,$;</#$+#)(#'#(\"'#&'#"),
+          peg$decode("%;</;#2Y\"\"6Y7Z/,$;</#$+#)(#'#(\"'#&'#"),
+          peg$decode("$4[\"\"5!7\\0)*4[\"\"5!7\\&")
         ],
 
         peg$currPos          = 0,
@@ -5210,15 +5149,4 @@ function lazy(self, callbacks) {
 
 });
 
-;require.alias("loglevel/lib/loglevel.js", "loglevel");
-require.alias("d3/d3.js", "d3");
-require.alias("process/browser.js", "process");process = require('process');require.register("___globals___", function(exports, require, module) {
-  
-
-// Auto-loaded modules from config.npm.globals.
-window.log = require("loglevel");
-window.d3 = require("d3");
-
-
-});})();require('___globals___');
-
+;
